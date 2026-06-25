@@ -11,8 +11,28 @@ import { selectGoalsMap, updateGoal as updateGoalRedux } from '../../../store/go
 import { useAppDispatch, useAppSelector } from '../../../store/hooks'
 import DatePicker from '../../components/DatePicker'
 import { Theme } from '../../components/Theme'
+import { BaseEmoji, Picker } from 'emoji-mart'
+import EmojiPicker from '../../components/EmojiPicker'
+import AddIconButton from './AddIconButton'
+import GoalIcon from './GoalIcon'
 
 type Props = { goal: Goal }
+type EmojiPickerContainerProps = { isOpen: boolean; hasIcon: boolean }
+type AddIconButtonContainerProps = { shouldShow: boolean }
+
+const AddIconButtonContainer = styled.div<AddIconButtonContainerProps>`
+  display: ${(props) => (props.shouldShow ? 'flex' : 'none')};
+`
+const GoalIconContainer = styled.div<GoalIconContainerProps>`
+  display: ${(props) => (props.shouldShow ? 'flex' : 'none')};
+`
+const EmojiPickerContainer = styled.div<EmojiPickerContainerProps>`
+  display: ${(props) => (props.isOpen ? 'flex' : 'none')};
+  position: absolute;
+  top: ${(props) => (props.hasIcon ? '10rem' : '2rem')};
+  left: 0;
+`
+
 export function GoalManager(props: Props) {
   const dispatch = useAppDispatch()
 
@@ -21,6 +41,11 @@ export function GoalManager(props: Props) {
   const [name, setName] = useState<string | null>(null)
   const [targetDate, setTargetDate] = useState<Date | null>(null)
   const [targetAmount, setTargetAmount] = useState<number | null>(null)
+
+  const [icon, setIcon] = useState<string | null>(null)
+  const [emojiPickerIsOpen, setEmojiPickerIsOpen] = useState(false)
+
+  const hasIcon = () => props.goal.icon != null
 
   useEffect(() => {
     setName(props.goal.name)
@@ -36,6 +61,10 @@ export function GoalManager(props: Props) {
   useEffect(() => {
     setName(goal.name)
   }, [goal.name])
+
+    useEffect(() => {
+    setIcon(props.goal.icon)
+  }, [props.goal.id, props.goal.icon])
 
   const updateNameOnChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const nextName = event.target.value
@@ -75,6 +104,29 @@ export function GoalManager(props: Props) {
     }
   }
 
+    const pickEmojiOnClick = (emoji: BaseEmoji, event: React.MouseEvent) => {
+      event.stopPropagation();
+
+      setIcon(emoji.native)
+      setEmojiPickerIsOpen(false)
+
+      const updatedGoal: Goal = {    
+      ...props.goal,
+      icon: emoji.native ?? props.goal.icon,
+      name: name ?? props.goal.name,
+      targetDate: targetDate ?? props.goal.targetDate,
+      targetAmount: targetAmount ?? props.goal.targetAmount,
+      }
+
+      dispatch(updateGoalRedux(updatedGoal))
+      updateGoalApi(props.goal.id, updatedGoal)
+  }
+
+  const addIconOnClick = (event: React.MouseEvent) => {
+    event.stopPropagation()
+    setEmojiPickerIsOpen(true)
+  }
+
   return (
     <GoalManagerContainer>
       <NameInput value={name ?? ''} onChange={updateNameOnChange} />
@@ -106,14 +158,36 @@ export function GoalManager(props: Props) {
           <StringValue>{new Date(props.goal.created).toLocaleDateString()}</StringValue>
         </Value>
       </Group>
+
+      <Group>
+        <AddIconButtonContainer shouldShow={!hasIcon()}>
+          <AddIconButton 
+          hasIcon={hasIcon()}
+          onClick={addIconOnClick}/>
+        </AddIconButtonContainer>
+      </Group>
+
+      <Group>
+        <EmojiPickerContainer
+          isOpen={emojiPickerIsOpen}
+          hasIcon={hasIcon()}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <EmojiPicker onClick={pickEmojiOnClick} />
+        </EmojiPickerContainer>
+      </Group>
+
+      <Group>
+        <GoalIconContainer shouldShow={hasIcon()}>
+          <GoalIcon icon={goal.icon} onClick={addIconOnClick} />
+        </GoalIconContainer>
+      </Group>
     </GoalManagerContainer>
   )
 }
 
 type FieldProps = { name: string; icon: IconDefinition }
-type AddIconButtonContainerProps = { shouldShow: boolean }
 type GoalIconContainerProps = { shouldShow: boolean }
-type EmojiPickerContainerProps = { isOpen: boolean; hasIcon: boolean }
 
 const Field = (props: FieldProps) => (
   <FieldContainer>
